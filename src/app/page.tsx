@@ -82,11 +82,7 @@ export default function Home() {
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <Link
-<<<<<<< HEAD
                   href="/interviewSetup"
-=======
-                  href="/auth/sign-up"
->>>>>>> d0a831756d196fa618c9648c7b1249d9f73ce17a
                   className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 text-sm font-semibold text-primary-foreground shadow-sm transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   Start Practicing
