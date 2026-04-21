@@ -361,14 +361,10 @@ export default function InterviewDashboard() {
           onClick={closeModal}
           className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
         >
-<<<<<<< HEAD:frontend/src/app/dashboard/page.tsx
           <div
             onClick={(e) => e.stopPropagation()}
             className="bg-card border border-border w-full max-w-2xl rounded-3xl overflow-hidden"
           >
-=======
-          <div className="bg-card border border-border w-full max-w-2xl rounded-3xl overflow-hidden">
->>>>>>> d0a831756d196fa618c9648c7b1249d9f73ce17a:frontend/src/app/(main-content)/dashboard/page.tsx
             <div className="p-8">
               <div className="flex justify-between">
                 <div>
