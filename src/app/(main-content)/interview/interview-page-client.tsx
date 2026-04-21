@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { Robot } from "@/components/Robot";
-import AdditionalInputs from "@/app/(main-content)/interview/Canvas";
+import AdditionalInputs from "../../../../Canvas";
 import { useVad } from "@/hooks/useVad";
 
 type Props = {
