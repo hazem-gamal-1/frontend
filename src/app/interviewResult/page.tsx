@@ -1,10 +1,9 @@
 "use client";
-export const dynamic = "force-dynamic";
 import { useInterviewStore } from "@/store/interviewStore";
 import { BadgeCheck, Download, FileText, Share2, Zap } from "lucide-react";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 
 // Matches Python Feedback model
 type Feedback = {
@@ -23,7 +22,7 @@ type StructuredResponse = {
   feedback: Feedback | null;
 };
 
-export default function InterviewResult() {
+function InterviewResultContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("sessionId") ?? "N/A";
 
@@ -217,5 +216,17 @@ export default function InterviewResult() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function InterviewResult() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        Loading result...
+      </div>
+    }>
+      <InterviewResultContent />
+    </Suspense>
   );
 }
