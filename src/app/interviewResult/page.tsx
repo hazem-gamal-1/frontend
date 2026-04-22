@@ -1,5 +1,5 @@
 "use client";
-
+export const dynamic = "force-dynamic";
 import { useInterviewStore } from "@/store/interviewStore";
 import { BadgeCheck, Download, FileText, Share2, Zap } from "lucide-react";
 import Image from "next/image";
