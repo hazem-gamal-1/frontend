@@ -8,10 +8,10 @@ import { FadeIn } from "../../../motion-Wrappers/fade-in";
 import { AnimatePresence, motion } from "framer-motion";
 import ClientDropzone from "@/components/client-dropzone";
 import { GenderPicker, LanguagePicker, PersonalityPicker } from "./pickers";
-import { JobTags } from "./job-tags";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { ChevronLeftIcon, ChevronRightIcon, Loader2 } from "lucide-react";
 import {
   INTERVIEW_GENDER,
@@ -28,14 +28,14 @@ export default function InterviewSetup() {
     language: string;
     gender: string;
     personality: string;
-    job_description: string[];
+    job_description: string;
     cv: File | null;
   }>({
     cv: null,
     language: INTERVIEW_LANGUAGE[0].value,
     gender: INTERVIEW_GENDER[0].value,
     personality: INTERVIEW_PERSONALITY[0].value,
-    job_description: [],
+    job_description: "",
   });
 
   const goNext = () => {
@@ -78,7 +78,7 @@ export default function InterviewSetup() {
     formData.append("language", formValues.language);
     formData.append("gender", formValues.gender);
     formData.append("interviewer_personality", formValues.personality);
-    formData.append("job_description", formValues.job_description.join(","));
+    formData.append("job_description", formValues.job_description);
 
     mutate(formData);
   };
@@ -172,16 +172,18 @@ export default function InterviewSetup() {
                     </div>
                     <div className="flex flex-col gap-3">
                       <p className="text-sm text-muted-foreground">
-                        Job / Skills
+                        Job Description
                       </p>
-                      <JobTags
+                      <Textarea
+                        placeholder="Describe the job role, required skills, and responsibilities..."
                         value={formValues.job_description}
-                        setValue={(val) =>
+                        onChange={(e) =>
                           setFormValues({
                             ...formValues,
-                            job_description: val,
+                            job_description: e.target.value,
                           })
                         }
+                        className="min-h-32"
                       />
                     </div>
                   </div>

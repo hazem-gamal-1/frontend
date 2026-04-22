@@ -145,7 +145,7 @@ function InterviewResultContent() {
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/40 via-transparent to-transparent rounded-2xl" />
                 <div className="relative h-full flex flex-col justify-center items-center gap-4 z-10">
                   <p className="uppercase font-bold text-sm tracking-wider text-foreground">
-                    Composite Score
+                    Job Matching Score
                   </p>
                   <div className="flex items-baseline gap-2">
                     <p className="text-7xl font-bold text-foreground">
@@ -221,11 +221,13 @@ function InterviewResultContent() {
 
 export default function InterviewResult() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-        Loading result...
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+          Loading result...
+        </div>
+      }
+    >
       <InterviewResultContent />
     </Suspense>
   );
