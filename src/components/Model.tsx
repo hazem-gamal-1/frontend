@@ -1,10 +1,15 @@
 import { Suspense } from "react";
-import { Robot } from "./Robot";
+import { Robot, RobotPhase } from "./Robot";
 
-export default function Model() {
+type ModelProps = {
+  phase?: RobotPhase;
+  avatarText?: string;
+};
+
+export default function Model({ phase, avatarText }: ModelProps) {
   return (
     <Suspense fallback={null}>
-      <Robot />
+      <Robot phase={phase} avatarText={avatarText} />
     </Suspense>
   );
 }

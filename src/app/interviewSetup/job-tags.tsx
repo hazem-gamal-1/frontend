@@ -59,7 +59,7 @@ export const JobTags = ({
           {tags.map((t, i) => (
             <p
               key={i}
-              className="flex animate-scale-in animation-duration-800 ease-elastic justify-center items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-center text-xs font-medium"
+              className="flex animate-scale-in animation-duration-800 [animation-timing-function:var(--ease-elastic)] justify-center items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-center text-xs font-medium"
             >
               {t}
               <Button

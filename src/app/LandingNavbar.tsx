@@ -39,7 +39,7 @@ export default function LandingNavbar() {
         <div className="flex items-center gap-3 shrink-0">
           <ThemeSwitch />
           <Link
-            href="/auth/sign-up"
+            href="/signup"
             className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-sm hover:opacity-90 transition"
           >
             Get started

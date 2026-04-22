@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-
+@import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -230,9 +230,4 @@
   button:not(:disabled) {
     cursor: pointer;
   }
-}
-
-@utility ease-elastic {
-  transition-timing-function: var(--ease-elastic);
-  animation-timing-function: var(--ease-elastic);
 }

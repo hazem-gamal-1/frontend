@@ -4,9 +4,6 @@ import "./globals.css";
 import { Providers } from "../providers/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "../providers/QueryProvider";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { DashboardSidebar } from "@/components/sidebar-02/app-sidebar";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -27,10 +24,8 @@ export default async function RootLayout({
     <html suppressHydrationWarning>
       <body className={`${inter.variable} antialiased `}>
         <Providers>
-          <QueryProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </QueryProvider>
-          <Toaster richColors />
+          <QueryProvider>{children}</QueryProvider>
+          <Toaster />
         </Providers>
       </body>
     </html>

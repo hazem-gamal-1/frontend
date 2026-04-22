@@ -109,7 +109,7 @@ export default function InterviewDashboard() {
 
   return (
     <>
-      <div className="min-h-screen bg-background rounded-full text-foreground p-4 md:p-8 font-sans">
+      <div className="min-h-screen bg-background text-foreground p-4 md:p-8 font-sans">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 md:mb-12">

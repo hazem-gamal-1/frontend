@@ -1,8 +1,8 @@
 import MaxContainerWrapper_Section from "@/components/maxContainerWrapper_Section";
-import { FadeIn } from "../../../../motion-Wrappers/fade-in";
+import { FadeIn } from "../../../motion-Wrappers/fade-in";
 import { Sparkles } from "lucide-react";
 import { BRAND_STATS } from "./contents";
-import { StaggerItem } from "../../../../motion-Wrappers/stagger-items";
+import { StaggerItem } from "../../../motion-Wrappers/stagger-items";
 import { ReactNode } from "react";
 
 export default function Layout({ children }: { children: ReactNode }) {

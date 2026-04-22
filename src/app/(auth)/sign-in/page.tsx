@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, BrainCircuit, GiftIcon, Loader2 } from "lucide-react";
+import { AlertCircle, BrainCircuit, Github, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -12,9 +12,8 @@ import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { InputPassword_showToggle } from "../InputPassword";
 import { signIn_Schema, SignInFormValues } from "../schemas/signIn-Schema";
-import { setCookies } from "@/cookies-action";
-import { TokensResponse } from "@/types";
 // import setCookie from "../../actions";
+import { LoginResponseType } from "./types";
 
 function FieldError({ message }: { message?: string }) {
   if (!message) return null;
@@ -43,33 +42,25 @@ export default function SignInPage() {
   const router = useRouter();
 
   const onSubmit = async (values: SignInFormValues) => {
+    // console.log(values);
     try {
       const response = await fetch(
         process.env.NEXT_PUBLIC_BASE_BACKEND_URL + "/api/Auth/login",
         {
           method: "POST",
           body: JSON.stringify(values),
+          // credentials: "include",
           headers: { "Content-Type": "application/json" },
         },
       );
-      const result: TokensResponse = await response.json();
+      const result: LoginResponseType = await response.json();
+      console.log(result);
       if (!response.ok) {
-        result.errors?.forEach((element) => toast.error(element));
+        toast.error(result.message ?? "Something went wrong.");
         return;
       } else {
-        await setCookies([
-          {
-            name: "token",
-            value: result.data.token,
-            maxAge: result.data.expiresIn,
-          },
-          {
-            name: "refreshToken",
-            value: result.data.refreshToken,
-            expires: new Date(result.data.refreshTokenExpiration),
-          },
-        ]);
-        startTransition(() => router.push("/dashboard"));
+        // await setCookie(result);
+        startTransition(() => router.push("/interviewSetup"));
       }
     } catch (error) {
       if (error instanceof Error) toast.error(error.message);
@@ -115,7 +106,7 @@ export default function SignInPage() {
               type="button"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <GiftIcon className="size-4" />
+              <Github className="size-4" />
               GitHub
             </button>
           </div>
@@ -156,7 +147,7 @@ export default function SignInPage() {
                   Password
                 </Label>
                 <Link
-                  href="/auth/forgot-password"
+                  href="/forgot-password"
                   className="text-xs text-muted-foreground underline underline-offset-4 hover:text-primary transition-colors"
                 >
                   Forgot password?
@@ -199,7 +190,7 @@ export default function SignInPage() {
           <p className="mt-6 ml-auto text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
-              href="/auth/sign-up"
+              href="/sign-up"
               className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
             >
               Create one

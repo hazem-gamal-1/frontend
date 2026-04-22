@@ -13,11 +13,11 @@ import { cn } from "@/lib/utils";
 export function InputPassword_showToggle({
   className,
   ...props
-}: { className?: string } & ComponentPropsWithRef<typeof InputGroupInput>) {
+}: { className: string } & ComponentPropsWithRef<typeof InputGroupInput>) {
   const [showPassword, setShowPassword] = useState(false);
   return (
     <>
-      <InputGroup className={cn(" pl-0.5! overflow-hidden", className)}>
+      <InputGroup className={cn(" pl-0.5! ", className)}>
         <InputGroupInput
           placeholder="Enter password"
           {...props}

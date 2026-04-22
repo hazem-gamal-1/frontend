@@ -14,6 +14,7 @@ export function useSpeech({
   silenceTimeout_ms = 4000,
   language = "en-US",
 }: UseSpeechProps) {
+
   const {
     transcript,
     listening,
@@ -60,6 +61,7 @@ export function useSpeech({
     return () => {
       SpeechRecognition.stopListening();
     };
+
   }, [enabled, language]);
 
   return {
@@ -74,5 +76,3 @@ export function useSpeech({
     isBrowserSupported: browserSupportsSpeechRecognition,
   };
 }
-
-export const useVad = useSpeech;

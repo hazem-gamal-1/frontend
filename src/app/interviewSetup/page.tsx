@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Stepper } from "./stepper";
 import { useState, useTransition } from "react";
 import { STEPS } from "./contents";
-import { FadeIn } from "../../../../motion-Wrappers/fade-in";
+import { FadeIn } from "../../../motion-Wrappers/fade-in";
 import { AnimatePresence, motion } from "framer-motion";
 import ClientDropzone from "@/components/client-dropzone";
 import { GenderPicker, LanguagePicker, PersonalityPicker } from "./pickers";

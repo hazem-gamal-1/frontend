@@ -1,210 +1,444 @@
-import { JSX, useMemo, useRef, useEffect } from "react";
-import { useGLTF } from "@react-three/drei";
+"use client";
+
+import { JSX, useEffect, useRef, useCallback } from "react";
 import { useFrame } from "@react-three/fiber";
-import type { GLTF } from "three-stdlib";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
-type GLTFResult = GLTF & {
-  nodes: {
-    body: THREE.Mesh;
-    Screen: THREE.Mesh;
-    left_arm: THREE.Mesh;
-    right_arm_: THREE.Mesh;
-  };
-};
+export type RobotPhase =
+  | "idle"
+  | "fetching"
+  | "playing"
+  | "listening"
+  | "submitting"
+  | "done";
 
 type RobotProps = JSX.IntrinsicElements["group"] & {
-  phase?: "idle" | "fetching" | "playing" | "listening" | "submitting" | "done";
+  phase?: RobotPhase;
+  avatarText?: string;
 };
 
-export function Robot({ phase = "idle", ...props }: RobotProps) {
-  const { nodes } = useGLTF("/model/robot.glb") as unknown as GLTFResult;
-  const screenRef = useRef<THREE.Mesh>(null);
-  const leftArmRef = useRef<THREE.Mesh>(null);
-  const rightArmRef = useRef<THREE.Mesh>(null);
-  const frameAcc = useRef(0);
-  const targetFps = useRef(30);
+const MODE_REACTIONS: Record<RobotPhase, { blinkRate: number; swaySpeed: number; swayAmount: number }> = {
+  idle: { blinkRate: 0.35, swaySpeed: 0.3, swayAmount: 0.008 },
+  fetching: { blinkRate: 0.45, swaySpeed: 0.45, swayAmount: 0.01 },
+  playing: { blinkRate: 0.6, swaySpeed: 0.6, swayAmount: 0.015 },
+  listening: { blinkRate: 0.5, swaySpeed: 0.5, swayAmount: 0.012 },
+  submitting: { blinkRate: 0.4, swaySpeed: 0.35, swayAmount: 0.009 },
+  done: { blinkRate: 0.3, swaySpeed: 0.25, swayAmount: 0.007 },
+};
 
-  useEffect(() => {
-    if (!screenRef.current) return;
-    const geometry = screenRef.current.geometry;
-    const pos = geometry.attributes.position;
-    if (!pos) return;
+const VISEME_SHAPES: Record<string, Record<string, number>> = {
+  sil: { jawOpen: 0, mouthOpen: 0, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  aa: { jawOpen: 0.85, mouthOpen: 0.9, viseme_aa: 1, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  E: { jawOpen: 0.5, mouthOpen: 0.55, viseme_aa: 0, viseme_E: 1, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  ih: { jawOpen: 0.3, mouthOpen: 0.35, viseme_aa: 0, viseme_E: 0.3, viseme_I: 1, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  oh: { jawOpen: 0.7, mouthOpen: 0.75, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 1, viseme_U: 0.3, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  oo: { jawOpen: 0.4, mouthOpen: 0.5, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0.3, viseme_U: 1, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  PP: { jawOpen: 0.05, mouthOpen: 0.05, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 1, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  FF: { jawOpen: 0.2, mouthOpen: 0.25, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 1, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  TH: { jawOpen: 0.25, mouthOpen: 0.3, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 1, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  SS: { jawOpen: 0.15, mouthOpen: 0.2, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 1, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  DD: { jawOpen: 0.3, mouthOpen: 0.3, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 1, viseme_kk: 0, viseme_nn: 0, viseme_RR: 0 },
+  kk: { jawOpen: 0.25, mouthOpen: 0.25, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 1, viseme_nn: 0, viseme_RR: 0 },
+  nn: { jawOpen: 0.2, mouthOpen: 0.2, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 1, viseme_RR: 0 },
+  RR: { jawOpen: 0.25, mouthOpen: 0.3, viseme_aa: 0, viseme_E: 0, viseme_I: 0, viseme_O: 0, viseme_U: 0, viseme_PP: 0, viseme_FF: 0, viseme_TH: 0, viseme_SS: 0, viseme_DD: 0, viseme_kk: 0, viseme_nn: 0, viseme_RR: 1 },
+};
 
-    const arr = pos.array as Float32Array;
-    const uvs = new Float32Array((arr.length / 3) * 2);
+const CHAR_TO_VISEME: Record<string, string> = {
+  a: "aa", e: "E", i: "ih", o: "oh", u: "oo",
+  b: "PP", p: "PP", m: "PP",
+  f: "FF", v: "FF",
+  t: "DD", d: "DD", n: "nn", l: "nn",
+  s: "SS", z: "SS", c: "SS",
+  k: "kk", g: "kk", q: "kk", x: "kk",
+  r: "RR",
+  w: "oo", y: "ih",
+  j: "SS", h: "E",
+};
 
-    let minX = Infinity,
-      maxX = -Infinity,
-      minY = Infinity,
-      maxY = -Infinity;
+const ALL_MORPH_KEYS = Object.keys(VISEME_SHAPES.sil);
 
-    for (let i = 0; i < arr.length; i += 3) {
-      if (arr[i] < minX) minX = arr[i];
-      if (arr[i] > maxX) maxX = arr[i];
-      if (arr[i + 1] < minY) minY = arr[i + 1];
-      if (arr[i + 1] > maxY) maxY = arr[i + 1];
+function textToVisemeTimeline(text: string, speechRate = 0.95) {
+  const timeline: Array<{ time: number; viseme: string; duration: number }> = [];
+  const msPerChar = 70 / speechRate;
+  let time = 0;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i].toLowerCase();
+    if (char === " " || char === "," || char === ".") {
+      const pauseDuration = char === " " ? msPerChar * 0.8 : msPerChar * 3;
+      timeline.push({ time, viseme: "sil", duration: pauseDuration });
+      time += pauseDuration;
+    } else if (char === "!" || char === "?") {
+      timeline.push({ time, viseme: "sil", duration: msPerChar * 4 });
+      time += msPerChar * 4;
+    } else {
+      const viseme = CHAR_TO_VISEME[char] || "DD";
+      const isVowel = "aeiou".includes(char);
+      const duration = isVowel ? msPerChar * 1.4 : msPerChar * 0.9;
+      timeline.push({ time, viseme, duration });
+      time += duration;
     }
+  }
 
-    for (let i = 0; i < arr.length; i += 3) {
-      uvs[(i / 3) * 2] = (arr[i] - minX) / (maxX - minX);
-      uvs[(i / 3) * 2 + 1] = (arr[i + 1] - minY) / (maxY - minY);
+  timeline.push({ time, viseme: "sil", duration: 200 });
+  return { timeline, totalDuration: time + 200 };
+}
+
+function lerpVisemes(a: Record<string, number>, b: Record<string, number>, t: number) {
+  const result: Record<string, number> = {};
+  const ct = 0.5 - 0.5 * Math.cos(t * Math.PI);
+  ALL_MORPH_KEYS.forEach((key) => {
+    const va = a[key] || 0;
+    const vb = b[key] || 0;
+    result[key] = va + (vb - va) * ct;
+  });
+  return result;
+}
+
+export function Robot({ phase = "playing", avatarText = "", ...props }: RobotProps) {
+  const { scene } = useGLTF("/model/interview.glb");
+  const groupRef = useRef<THREE.Group>(null);
+  const jawMeshesRef = useRef<THREE.Mesh[]>([]);
+  const visemeRef = useRef<Record<string, number>>(VISEME_SHAPES.sil);
+  const visemeRafRef = useRef<number | null>(null);
+  const visemeStopRef = useRef(false);
+  const timeRef = useRef(0);
+  const blinkTimerRef = useRef(0);
+  const currentJawRef = useRef(0);
+  const initializedRef = useRef(false);
+
+  const stopVisemeTimeline = useCallback(() => {
+    visemeStopRef.current = true;
+    if (visemeRafRef.current) {
+      cancelAnimationFrame(visemeRafRef.current);
+      visemeRafRef.current = null;
     }
-
-    geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-    geometry.attributes.uv.needsUpdate = true;
+    visemeRef.current = VISEME_SHAPES.sil;
   }, []);
 
-  const face = useMemo(() => {
-    const canvas = document.createElement("canvas");
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext("2d")!;
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.flipY = false;
-    texture.minFilter = THREE.LinearFilter;
-    texture.magFilter = THREE.LinearFilter;
-    texture.generateMipmaps = false;
-    texture.needsUpdate = true;
-    return { canvas, ctx, texture };
-  }, []);
-
-  useEffect(() => () => face.texture.dispose(), [face.texture]);
-
   useEffect(() => {
-    const cores = navigator.hardwareConcurrency ?? 4;
-    const dpr = window.devicePixelRatio ?? 1;
-    const hi = cores >= 8 && dpr <= 1.5;
-    const active = hi ? 45 : 30;
+    if (!avatarText?.trim()) {
+      stopVisemeTimeline();
+      return;
+    }
 
-    const apply = () => {
-      targetFps.current = document.hidden ? 8 : active;
+    const { timeline, totalDuration } = textToVisemeTimeline(avatarText, 0.95);
+    if (!timeline.length || totalDuration <= 0) return;
+
+    visemeStopRef.current = false;
+    const startTime = performance.now();
+
+    const tick = () => {
+      if (visemeStopRef.current) {
+        visemeRef.current = VISEME_SHAPES.sil;
+        return;
+      }
+
+      // LOOP forever (debug): wrap elapsed time by totalDuration
+      const elapsedRaw = performance.now() - startTime;
+      const elapsed = elapsedRaw % totalDuration;
+
+      let currentIdx = 0;
+      for (let i = timeline.length - 1; i >= 0; i--) {
+        if (elapsed >= timeline[i].time) {
+          currentIdx = i;
+          break;
+        }
+      }
+
+      const current = timeline[currentIdx];
+      const next = timeline[Math.min(currentIdx + 1, timeline.length - 1)];
+      const currentShape = VISEME_SHAPES[current.viseme] || VISEME_SHAPES.sil;
+      const nextShape = VISEME_SHAPES[next.viseme] || VISEME_SHAPES.sil;
+      const progress =
+        current.duration > 0
+          ? Math.min((elapsed - current.time) / current.duration, 1)
+          : 0;
+
+      visemeRef.current = lerpVisemes(currentShape, nextShape, progress);
+
+      // always continue (infinite loop)
+      visemeRafRef.current = requestAnimationFrame(tick);
     };
 
-    apply();
-    document.addEventListener("visibilitychange", apply);
-    return () => document.removeEventListener("visibilitychange", apply);
-  }, []);
+    visemeRafRef.current = requestAnimationFrame(tick);
+    return stopVisemeTimeline;
+  }, [avatarText, stopVisemeTimeline]);
 
-  useFrame(({ clock }, delta) => {
-    const ctx = face.ctx;
-    if (!ctx) return;
+  useEffect(() => {
+    if (!scene || initializedRef.current) return;
+    initializedRef.current = true;
 
-    frameAcc.current += delta;
-    if (frameAcc.current < 1 / targetFps.current) return;
-    frameAcc.current %= 1 / targetFps.current;
+    scene.updateWorldMatrix(true, true);
 
-    const t = clock.getElapsedTime();
-    const w = face.canvas.width;
-    const h = face.canvas.height;
-    const isTalking = phase === "playing";
-    const isListening = phase === "listening";
+    const jawMeshes: THREE.Mesh[] = [];
+    const allMeshes: THREE.Mesh[] = [];
 
-    const p = (t % 2.4) / 2.4;
-    let blink = 1;
-    if (p > 0.82 && p < 0.88) blink = 1 - (p - 0.82) / 0.06;
-    else if (p >= 0.88 && p < 0.94) blink = (p - 0.88) / 0.06;
+    let wMinY = Infinity, wMaxY = -Infinity;
+    let wMinX = Infinity, wMaxX = -Infinity;
+    let wMinZ = Infinity, wMaxZ = -Infinity;
 
-    const eyeRX = w * 0.085;
-    const eyeRY = Math.max(w * 0.012, eyeRX * 1.6 * blink);
+    const wv = new THREE.Vector3();
 
-    const talkSpeed = isTalking ? 10.0 : 2.0;
-    const talkScale = isTalking ? 0.06 : 0.01;
-    const smileR = w * (0.21 + talkScale * Math.sin(t * talkSpeed));
-    const lineW = w * (0.035 + 0.005 * Math.sin(t * talkSpeed));
+    scene.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry) return;
+      allMeshes.push(mesh);
+      const posAttr = mesh.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
+      if (!posAttr) return;
 
-    const armSpeed = isTalking ? 3.5 : 1.0;
-    const armAmp = isTalking ? 0.18 : 0.06;
-    const armAngle = Math.sin(t * armSpeed) * armAmp;
+      for (let i = 0; i < posAttr.count; i++) {
+        wv.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).applyMatrix4(mesh.matrixWorld);
+        if (wv.y < wMinY) wMinY = wv.y; if (wv.y > wMaxY) wMaxY = wv.y;
+        if (wv.x < wMinX) wMinX = wv.x; if (wv.x > wMaxX) wMaxX = wv.x;
+        if (wv.z < wMinZ) wMinZ = wv.z; if (wv.z > wMaxZ) wMaxZ = wv.z;
+      }
+    });
 
-    if (leftArmRef.current) {
-      leftArmRef.current.rotation.z = armAngle;
-      leftArmRef.current.rotation.x = isListening ? 0.08 * Math.sin(t * 2) : 0;
+    if (!allMeshes.length) return;
+
+    const wHeight = wMaxY - wMinY;
+    const wWidth = wMaxX - wMinX;
+    const wDepth = wMaxZ - wMinZ;
+    const wCenterX = (wMinX + wMaxX) / 2;
+
+    const headThreshY = wMinY + wHeight * 0.65;
+    let posZCount = 0, negZCount = 0;
+    let wMaxHeadZ = -Infinity, wMinHeadZ = Infinity;
+
+    allMeshes.forEach((mesh) => {
+      const posAttr = mesh.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
+      const normAttr = mesh.geometry.getAttribute("normal") as THREE.BufferAttribute | undefined;
+      if (!posAttr || !normAttr) return;
+      const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+      const wn = new THREE.Vector3();
+
+      for (let i = 0; i < posAttr.count; i++) {
+        wv.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).applyMatrix4(mesh.matrixWorld);
+        if (wv.y < headThreshY) continue;
+        if (wv.z > wMaxHeadZ) wMaxHeadZ = wv.z;
+        if (wv.z < wMinHeadZ) wMinHeadZ = wv.z;
+
+        wn.set(normAttr.getX(i), normAttr.getY(i), normAttr.getZ(i)).applyMatrix3(normalMatrix).normalize();
+        if (wn.z > 0.3) posZCount++;
+        if (wn.z < -0.3) negZCount++;
+      }
+    });
+
+    const faceFrontZ = posZCount >= negZCount ? 1 : -1;
+    const faceWorldZ = faceFrontZ > 0 ? wMaxHeadZ : wMinHeadZ;
+    const faceZThreshW = faceFrontZ > 0 ? wMaxHeadZ - wDepth * 0.3 : wMinHeadZ + wDepth * 0.3;
+
+    let wNoseY = wMinY, wChinY = wMaxY;
+    allMeshes.forEach((mesh) => {
+      const posAttr = mesh.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
+      if (!posAttr) return;
+      for (let i = 0; i < posAttr.count; i++) {
+        wv.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).applyMatrix4(mesh.matrixWorld);
+        if (wv.y < headThreshY) continue;
+        const isFront = faceFrontZ > 0 ? wv.z > faceZThreshW : wv.z < faceZThreshW;
+        if (!isFront) continue;
+        if (wv.y > wNoseY) wNoseY = wv.y;
+        if (wv.y < wChinY) wChinY = wv.y;
+      }
+    });
+
+    const wFaceH = wNoseY - wChinY;
+    const wLipY = wChinY + wFaceH * 0.38;
+    const wLowerJawMin = wChinY - wFaceH * 0.03;
+    const wLowerJawMax = wLipY;
+    const wUpperLipMax = wLipY + wFaceH * 0.14;
+    const wLatRange = wWidth * 0.14;
+
+    allMeshes.forEach((mesh) => {
+      const geom = mesh.geometry;
+      const posAttr = geom.getAttribute("position") as THREE.BufferAttribute | undefined;
+      if (!posAttr) return;
+
+      const vertCount = posAttr.count;
+      const lowerJawWeights = new Float32Array(vertCount);
+      const upperLipWeights = new Float32Array(vertCount);
+      let jawVertCount = 0;
+
+      for (let i = 0; i < vertCount; i++) {
+        wv.set(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i)).applyMatrix4(mesh.matrixWorld);
+
+        const wy = wv.y;
+        const wz = wv.z;
+        const wx = wv.x;
+
+        if (wy < wLowerJawMin || wy > wUpperLipMax) continue;
+        const isFront = faceFrontZ > 0 ? wz > faceZThreshW : wz < faceZThreshW;
+        if (!isFront) continue;
+        if (Math.abs(wx - wCenterX) > wLatRange) continue;
+
+        const latT = Math.abs(wx - wCenterX) / wLatRange;
+        const lateralFalloff = 1 - latT * latT * 0.95;
+
+        let depthFalloff = 1;
+        const depthRange = Math.abs(faceWorldZ - faceZThreshW);
+        if (depthRange > 0.0001) {
+          const dT = faceFrontZ > 0 ? (wz - faceZThreshW) / depthRange : (faceZThreshW - wz) / depthRange;
+          depthFalloff = 0.5 + 0.5 * Math.max(0, Math.min(1, dT));
+        }
+
+        if (wy >= wLowerJawMin && wy <= wLowerJawMax) {
+          const t = (wy - wLowerJawMin) / Math.max(0.0001, wLowerJawMax - wLowerJawMin);
+          let w = 0.75 - t * 0.45;
+          w *= lateralFalloff * depthFalloff;
+          w = Math.max(0, Math.min(1, w));
+          w = w * w * (3 - 2 * w);
+          lowerJawWeights[i] = w;
+          if (w > 0.01) jawVertCount++;
+        }
+
+        if (wy >= wLipY && wy <= wUpperLipMax) {
+          const t = (wy - wLipY) / Math.max(0.0001, wUpperLipMax - wLipY);
+          let w = 0.14 * (1 - t * t);
+          w *= lateralFalloff * depthFalloff;
+          w = Math.max(0, Math.min(1, w));
+          w = w * w * (3 - 2 * w);
+          upperLipWeights[i] = w;
+          if (w > 0.01) jawVertCount++;
+        }
+      }
+
+      if (jawVertCount < 3) return;
+
+      geom.setAttribute("aLowerJaw", new THREE.BufferAttribute(lowerJawWeights, 1));
+      geom.setAttribute("aUpperLip", new THREE.BufferAttribute(upperLipWeights, 1));
+
+      const displaceDown = wFaceH * 0.09;
+      const displaceUp = wFaceH * 0.015;
+      const displaceForward = wFaceH * 0.025;
+
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      const patched = mats.map((mat) => {
+        const cloned = mat.clone() as THREE.Material & {
+          userData: {
+            jawUniforms?: {
+              uJawOpen: { value: number };
+              uJawAsymmetry: { value: number };
+            };
+          };
+        };
+
+        cloned.userData.jawUniforms = {
+          uJawOpen: { value: 0 },
+          uJawAsymmetry: { value: 0 },
+        };
+
+        cloned.onBeforeCompile = (shader) => {
+          shader.uniforms.uJawOpen = cloned.userData.jawUniforms!.uJawOpen;
+          shader.uniforms.uJawAsymmetry = cloned.userData.jawUniforms!.uJawAsymmetry;
+
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <common>",
+            `#include <common>
+attribute float aLowerJaw;
+attribute float aUpperLip;
+uniform float uJawOpen;
+uniform float uJawAsymmetry;`
+          );
+
+          shader.vertexShader = shader.vertexShader.replace(
+            "#include <begin_vertex>",
+            `#include <begin_vertex>
+{
+  float jaw = uJawOpen;
+  float lowerDisp = aLowerJaw * jaw;
+  transformed.y -= lowerDisp * ${displaceDown.toFixed(6)};
+  transformed.x -= lowerDisp * ${displaceForward.toFixed(6)};
+  float upperDisp = aUpperLip * jaw;
+  transformed.y += upperDisp * ${displaceUp.toFixed(6)};
+  transformed.x += lowerDisp * uJawAsymmetry * ${(displaceDown * 0.012).toFixed(6)};
+}`
+          );
+        };
+
+        cloned.needsUpdate = true;
+        cloned.customProgramCacheKey = () => `jaw_v6_${cloned.uuid}`;
+        return cloned;
+      });
+
+      mesh.material = patched.length === 1 ? patched[0] : patched;
+      jawMeshes.push(mesh);
+    });
+
+    jawMeshesRef.current = jawMeshes;
+  }, [scene]);
+
+  useFrame((_, delta) => {
+    if (!groupRef.current) return;
+
+    timeRef.current += delta;
+    const t = timeRef.current;
+    const cfg = MODE_REACTIONS[phase] || MODE_REACTIONS.idle;
+
+    groupRef.current.rotation.y =
+      Math.sin(t * cfg.swaySpeed) * cfg.swayAmount +
+      Math.sin(t * cfg.swaySpeed * 1.3) * cfg.swayAmount * 0.4;
+    groupRef.current.position.y =
+      Math.sin(t * cfg.swaySpeed * 0.7) * cfg.swayAmount * 0.25 - 0.5;
+
+    const jawTarget = Math.max(0, Math.min(1, visemeRef.current.jawOpen ?? 0));
+    const lerpSpeed = jawTarget > currentJawRef.current ? 0.5 : 0.18;
+    currentJawRef.current += (jawTarget - currentJawRef.current) * lerpSpeed;
+
+    let jawValue = currentJawRef.current;
+    if (jawValue > 0.03) {
+      jawValue += Math.sin(t * 18) * 0.006;
+      jawValue += Math.sin(t * 7.3) * 0.004;
+      jawValue += Math.sin(t * 3.1) * 0.003;
+      jawValue = Math.max(0, jawValue);
     }
-    if (rightArmRef.current) {
-      rightArmRef.current.rotation.z = -armAngle;
-      rightArmRef.current.rotation.x = isListening ? 0.08 * Math.sin(t * 2) : 0;
+
+    const asymmetry = jawValue > 0.04
+      ? Math.sin(t * 1.7) * 0.1 + Math.sin(t * 4.1) * 0.05
+      : 0;
+
+    jawMeshesRef.current.forEach((mesh) => {
+      const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+      mats.forEach((mat) => {
+        const m = mat as THREE.Material & {
+          userData: {
+            jawUniforms?: {
+              uJawOpen: { value: number };
+              uJawAsymmetry: { value: number };
+            };
+          };
+        };
+        if (!m.userData.jawUniforms) return;
+        m.userData.jawUniforms.uJawOpen.value = jawValue;
+        m.userData.jawUniforms.uJawAsymmetry.value = asymmetry;
+      });
+    });
+
+    blinkTimerRef.current += delta;
+    if (blinkTimerRef.current > 1 / cfg.blinkRate) {
+      blinkTimerRef.current = 0;
+      scene.traverse((obj) => {
+        const child = obj as THREE.Mesh;
+        if (child.isMesh && child.name?.toLowerCase().includes("eye")) {
+          child.scale.y = 0.05;
+          window.setTimeout(() => {
+            child.scale.y = 1;
+          }, 120);
+        }
+      });
     }
-
-    ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "#000000";
-    ctx.fillRect(0, 0, w, h);
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.strokeStyle = "#FFFFFF";
-
-    ctx.beginPath();
-    ctx.ellipse(w * 0.36, h * 0.41, eyeRX, eyeRY, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(w * 0.64, h * 0.41, eyeRX, eyeRY, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.lineWidth = lineW;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.arc(w / 2, h * 0.6, smileR, 0.12, Math.PI - 0.12);
-    ctx.stroke();
-
-    face.texture.needsUpdate = true;
   });
 
+  useEffect(() => () => stopVisemeTimeline(), [stopVisemeTimeline]);
+
   return (
-    <group
-      {...props}
-      position={[0, -0.3, 0]}
-      rotation={[0.5 * Math.PI, 0, 0]}
-      dispose={null}
-      scale={0.8}
-    >
-      <mesh geometry={nodes.body.geometry}>
-        <meshPhysicalMaterial
-          color="#ffffff"
-          metalness={0}
-          roughness={0.18}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-        />
-      </mesh>
-
-      <mesh ref={screenRef} geometry={nodes.Screen.geometry}>
-        <meshPhysicalMaterial
-          color="#0a0a0a"
-          emissive="#ffffff"
-          emissiveMap={face.texture}
-          emissiveIntensity={1.35}
-          metalness={0.25}
-          roughness={0.06}
-          clearcoat={1}
-          clearcoatRoughness={0.02}
-          envMapIntensity={1.6}
-          toneMapped={false}
-          side={THREE.FrontSide}
-        />
-      </mesh>
-
-      <mesh ref={leftArmRef} geometry={nodes.left_arm.geometry}>
-        <meshPhysicalMaterial
-          color="#ffffff"
-          metalness={0}
-          roughness={0.18}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-        />
-      </mesh>
-
-      <mesh ref={rightArmRef} geometry={nodes.right_arm_.geometry}>
-        <meshPhysicalMaterial
-          color="#ffffff"
-          metalness={0}
-          roughness={0.18}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-        />
-      </mesh>
+    <group ref={groupRef} {...props} dispose={null} scale={1.6} position={[0, 0, 0]}>
+      <group rotation={[0, 0, 0]}>
+        <primitive object={scene} />
+      </group>
     </group>
   );
 }
 
-useGLTF.preload("/model/robot.glb");
+useGLTF.preload("/model/interview.glb");

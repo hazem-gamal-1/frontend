@@ -6,7 +6,7 @@ import {
   User2,
   AlertCircle,
   Loader2,
-  GiftIcon,
+  Github,
 } from "lucide-react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -87,11 +87,10 @@ export default function SignUpPage() {
       // note : fetch doesn't throw on error status codes — if your API returns a 400 or 500, the catch block never runs. You need to check response.ok manually
       const result = await response.json();
       if (!response.ok) {
-        console.log(response)
         toast.error(result.message ?? "Something went wrong.");
         return;
       } else {
-        startTransition(() => router.push("/auth/sign-in"));
+        startTransition(() => router.push("/sign-in"));
       }
     } catch (error) {
       if (error instanceof Error) toast.error(error.message);
@@ -178,7 +177,7 @@ export default function SignUpPage() {
               type="button"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium transition hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <GiftIcon className="size-4" />
+              <Github className="size-4" />
               GitHub
             </button>
           </div>
@@ -347,7 +346,7 @@ export default function SignUpPage() {
           <p className="mt-6 ml-auto text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              href="/auth/sign-in"
+              href="/sign-in"
               className="font-medium text-foreground underline underline-offset-4 hover:text-primary"
             >
               Log in
