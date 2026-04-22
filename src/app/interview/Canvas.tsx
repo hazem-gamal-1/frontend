@@ -137,7 +137,7 @@ const CodeTab = ({ onSubmitCode }: { onSubmitCode?: () => void }) => {
   const setCode = useInterviewStore((s) => s.setCode);
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <div className="flex items-center justify-end gap-3 border-b border-border px-4 py-2 min-h-[50px]">
         <div className="flex items-center gap-2">
           <select
             value={language}
